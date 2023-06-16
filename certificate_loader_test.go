@@ -30,6 +30,7 @@ import (
 
 	"github.com/paketo-buildpacks/libjvm"
 	"github.com/paketo-buildpacks/libjvm/internal"
+	"github.com/paketo-buildpacks/libpak/bard"
 )
 
 func testCertificateLoader(t *testing.T, context spec.G, it spec.S) {
@@ -108,7 +109,7 @@ func testCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 		it("ignores non-existent file", func() {
 			c := libjvm.CertificateLoader{
 				CertFile: filepath.Join("testdata", "non-existent-file"),
-				Logger:   ioutil.Discard,
+				Logger:   bard.NewLogger(ioutil.Discard),
 			}
 
 			Expect(c.Load(path, "changeit")).To(Succeed())
@@ -117,7 +118,7 @@ func testCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 		it("ignores non-existent directory", func() {
 			c := libjvm.CertificateLoader{
 				CertDirs: []string{filepath.Join("testdata", "non-existent-directory")},
-				Logger:   ioutil.Discard,
+				Logger:   bard.NewLogger(ioutil.Discard),
 			}
 
 			Expect(c.Load(path, "changeit")).To(Succeed())
@@ -126,7 +127,7 @@ func testCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 		it("loads additional certificates from file", func() {
 			c := libjvm.CertificateLoader{
 				CertFile: filepath.Join("testdata", "certificates", "certificate-1.pem"),
-				Logger:   ioutil.Discard,
+				Logger:   bard.NewLogger(ioutil.Discard),
 			}
 
 			Expect(c.Load(path, "changeit")).To(Succeed())
@@ -144,7 +145,7 @@ func testCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 		it("loads additional certificates from directories", func() {
 			c := libjvm.CertificateLoader{
 				CertDirs: []string{filepath.Join("testdata", "certificates")},
-				Logger:   ioutil.Discard,
+				Logger:   bard.NewLogger(ioutil.Discard),
 			}
 
 			Expect(c.Load(path, "changeit")).To(Succeed())
@@ -168,7 +169,7 @@ func testCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 
 			c := libjvm.CertificateLoader{
 				CertDirs: []string{filepath.Join("testdata", "certificates")},
-				Logger:   ioutil.Discard,
+				Logger:   bard.NewLogger(ioutil.Discard),
 			}
 
 			Expect(c.Load(path, "changeit")).To(Succeed())

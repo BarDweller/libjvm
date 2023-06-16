@@ -38,7 +38,7 @@ func testJDK(t *testing.T, context spec.G, it spec.S) {
 
 		cl = libjvm.CertificateLoader{
 			CertDirs: []string{filepath.Join("testdata", "certificates")},
-			Logger:   ioutil.Discard,
+			Logger:   bard.NewLogger(ioutil.Discard),
 		}
 
 		ctx libcnb.BuildContext

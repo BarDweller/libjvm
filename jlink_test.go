@@ -17,16 +17,18 @@
 package libjvm_test
 
 import (
-	"github.com/paketo-buildpacks/libpak/crush"
-	"github.com/paketo-buildpacks/libpak/effect"
-	"github.com/paketo-buildpacks/libpak/effect/mocks"
-	"github.com/stretchr/testify/mock"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/paketo-buildpacks/libpak/crush"
+	"github.com/paketo-buildpacks/libpak/effect"
+	"github.com/paketo-buildpacks/libpak/effect/mocks"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/buildpacks/libcnb"
 	. "github.com/onsi/gomega"
@@ -42,7 +44,7 @@ func testJLink(t *testing.T, context spec.G, it spec.S) {
 
 		cl = libjvm.CertificateLoader{
 			CertDirs: []string{filepath.Join("testdata", "certificates")},
-			Logger:   io.Discard,
+			Logger:   bard.NewLogger(ioutil.Discard),
 		}
 
 		ctx libcnb.BuildContext

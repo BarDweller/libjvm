@@ -65,7 +65,7 @@ func testOpenSSLCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 	})
 
 	it("returns error if BPI_JVM_CACERTS is not set", func() {
-		o := helper.OpenSSLCertificateLoader{CertificateLoader: cl, Logger: bard.NewLogger(ioutil.Discard)}
+		o := helper.OpenSSLCertificateLoader17{CertificateLoader: cl, Logger: bard.NewLogger(ioutil.Discard)}
 
 		_, err := o.Execute()
 
@@ -84,7 +84,7 @@ func testOpenSSLCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 		})
 
 		it("loads additional certificates", func() {
-			o := helper.OpenSSLCertificateLoader{CertificateLoader: cl, Logger: bard.NewLogger(ioutil.Discard)}
+			o := helper.OpenSSLCertificateLoader17{CertificateLoader: cl, Logger: bard.NewLogger(ioutil.Discard)}
 
 			Expect(o.Execute()).To(BeNil())
 
@@ -105,7 +105,7 @@ func testOpenSSLCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 		it("does use temp keystore if keystore is read-only", func() {
 			Expect(os.Chmod(path, 0555)).To(Succeed())
 
-			o := helper.OpenSSLCertificateLoader{CertificateLoader: cl, Logger: bard.NewLogger(ioutil.Discard)}
+			o := helper.OpenSSLCertificateLoader17{CertificateLoader: cl, Logger: bard.NewLogger(ioutil.Discard)}
 
 			env, err := o.Execute()
 			Expect(err).NotTo(HaveOccurred())
@@ -128,7 +128,7 @@ func testOpenSSLCertificateLoader(t *testing.T, context spec.G, it spec.S) {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(os.Chmod(helper.TmpTrustStore, 0555)).To(Succeed())
 
-			o := helper.OpenSSLCertificateLoader{CertificateLoader: cl, Logger: bard.NewLogger(os.Stdout)}
+			o := helper.OpenSSLCertificateLoader17{CertificateLoader: cl, Logger: bard.NewLogger(os.Stdout)}
 
 			env, err := o.Execute()
 			Expect(env).To(BeNil())

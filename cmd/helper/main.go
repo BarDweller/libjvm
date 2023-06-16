@@ -21,10 +21,10 @@ import (
 	"os"
 
 	"github.com/miekg/dns"
+	"github.com/paketo-buildpacks/libjvm"
 	"github.com/paketo-buildpacks/libpak/bard"
 	"github.com/paketo-buildpacks/libpak/sherpa"
 
-	"github.com/paketo-buildpacks/libjvm"
 	"github.com/paketo-buildpacks/libjvm/helper"
 )
 
@@ -48,14 +48,15 @@ func main() {
 				MemoryLimitPathV2: helper.DefaultMemoryLimitPathV2,
 				MemoryInfoPath:    helper.DefaultMemoryInfoPath,
 			}
-			o  = helper.OpenSSLCertificateLoader{CertificateLoader: cl, Logger: l}
-			s8 = helper.SecurityProvidersClasspath8{Logger: l}
-			s9 = helper.SecurityProvidersClasspath9{Logger: l}
-			d8 = helper.Debug8{Logger: l}
-			d9 = helper.Debug9{Logger: l}
-			jm = helper.JMX{Logger: l}
-			n  = helper.NMT{Logger: l}
-			jf = helper.JFR{Logger: l}
+			o17 = helper.OpenSSLCertificateLoader17{CertificateLoader: cl, Logger: l}
+			o18 = helper.OpenSSLCertificateLoader18{CertificateLoader: cl, Logger: l}
+			s8  = helper.SecurityProvidersClasspath8{Logger: l}
+			s9  = helper.SecurityProvidersClasspath9{Logger: l}
+			d8  = helper.Debug8{Logger: l}
+			d9  = helper.Debug9{Logger: l}
+			jm  = helper.JMX{Logger: l}
+			n   = helper.NMT{Logger: l}
+			jf  = helper.JFR{Logger: l}
 		)
 
 		file := "/etc/resolv.conf"
@@ -70,7 +71,8 @@ func main() {
 			"jvm-heap":                       jh,
 			"link-local-dns":                 d,
 			"memory-calculator":              m,
-			"openssl-certificate-loader":     o,
+			"openssl-certificate-loader-17":  o17,
+			"openssl-certificate-loader-18":  o18,
 			"security-providers-classpath-8": s8,
 			"security-providers-classpath-9": s9,
 			"security-providers-configurer":  c,

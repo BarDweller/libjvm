@@ -17,17 +17,19 @@
 package libjvm
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/pem"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"time"
 
+	"github.com/paketo-buildpacks/libpak/bard"
+	"github.com/paketo-buildpacks/libpak/effect"
 	"github.com/paketo-buildpacks/libpak/sherpa"
 	"github.com/pavlo-v-chernykh/keystore-go/v4"
 	"golang.org/x/sys/unix"
@@ -38,13 +40,18 @@ const DefaultCertFile = "/etc/ssl/certs/ca-certificates.crt"
 var NormalizedDateTime = time.Date(1980, time.January, 1, 0, 0, 1, 0, time.UTC)
 
 type CertificateLoader struct {
-	CertFile string
-	CertDirs []string
-	Logger   io.Writer
+	CertFile       string
+	CertDirs       []string
+	Logger         bard.Logger
+	Command        string
+	PKCS12Keystore bool
 }
 
 func NewCertificateLoader() CertificateLoader {
-	c := CertificateLoader{CertFile: DefaultCertFile}
+	c := CertificateLoader{
+		CertFile:       DefaultCertFile,
+		PKCS12Keystore: false,
+	}
 
 	if s, ok := os.LookupEnv("SSL_CERT_FILE"); ok {
 		c.CertFile = s
@@ -92,13 +99,13 @@ func (c *CertificateLoader) Load(path string, password string) error {
 		}
 	}
 
-	_, _ = fmt.Fprintf(c.Logger, "Adding %d container CA certificates to JVM truststore\n", added)
+	c.Logger.Infof("Adding %d container CA certificates to JVM truststore\n", added)
 
-	if err := c.writeKeyStore(ks, path, password); err != nil {
-		return fmt.Errorf("unable to write keystore\n%w", err)
+	if c.PKCS12Keystore {
+		return c.writePKCS12KeyStore(ks, path, password)
 	}
 
-	return nil
+	return c.writeKeyStore(ks, path, password)
 }
 
 func (c CertificateLoader) certFiles() ([]string, error) {
@@ -110,21 +117,21 @@ func (c CertificateLoader) certFiles() ([]string, error) {
 		files = append(files, c.CertFile)
 	}
 
-	re := regexp.MustCompile(`^[[:xdigit:]]{8}\.[\d]$`)
+	re := regexp.MustCompile(`^[[:xdigit:]]{8}\.[\d]+$`)
 	for _, d := range c.CertDirs {
-		c, err := ioutil.ReadDir(d)
+		certs, err := os.ReadDir(d)
 		if os.IsNotExist(err) {
 			continue
 		} else if err != nil {
 			return nil, fmt.Errorf("unable to list children of %s\n%w", d, err)
 		}
 
-		for _, c := range c {
-			if c.IsDir() || !re.MatchString(c.Name()) {
+		for _, cert := range certs {
+			if cert.IsDir() || !re.MatchString(cert.Name()) {
 				continue
 			}
 
-			files = append(files, filepath.Join(d, c.Name()))
+			files = append(files, filepath.Join(d, cert.Name()))
 		}
 	}
 
@@ -162,7 +169,7 @@ func (c CertificateLoader) readBlocks(path string) ([]*pem.Block, error) {
 		blocks []*pem.Block
 	)
 
-	rest, err := ioutil.ReadFile(path)
+	rest, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("unable to read %s\n%w", path, err)
 	}
@@ -178,7 +185,10 @@ func (c CertificateLoader) readBlocks(path string) ([]*pem.Block, error) {
 	return blocks, nil
 }
 
-func (CertificateLoader) readKeyStore(path string, password string) (keystore.KeyStore, error) {
+func (c CertificateLoader) readKeyStore(path string, password string) (keystore.KeyStore, error) {
+	if c.PKCS12Keystore {
+		return keystore.New(keystore.WithOrderedAliases()), nil
+	}
 	in, err := os.Open(path)
 	if err != nil {
 		return keystore.KeyStore{}, fmt.Errorf("unable to open %s\n%w", path, err)
@@ -195,7 +205,7 @@ func (CertificateLoader) readKeyStore(path string, password string) (keystore.Ke
 
 func (c CertificateLoader) writeKeyStore(ks keystore.KeyStore, path string, password string) error {
 	if unix.Access(path, unix.W_OK) != nil {
-		_, _ = fmt.Fprintf(c.Logger, "WARNING: Unable to add container CA certificates to JVM because %s is read-only", path)
+		c.Logger.Bodyf("WARNING: Unable to add container CA certificates to JVM because %s is read-only", path)
 		return nil
 	}
 
@@ -207,6 +217,43 @@ func (c CertificateLoader) writeKeyStore(ks keystore.KeyStore, path string, pass
 
 	if err := ks.Store(out, []byte(password)); err != nil {
 		return fmt.Errorf("unable to encode keystore\n%w", err)
+	}
+
+	return nil
+}
+
+func (c CertificateLoader) writePKCS12KeyStore(ks keystore.KeyStore, path string, password string) error {
+	trustStore := filepath.Join("/tmp", "truststore")
+
+	out, err := os.OpenFile(trustStore, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return fmt.Errorf("unable to open %s\n%w", trustStore, err)
+	}
+	defer out.Close()
+
+	if err := ks.Store(out, []byte(password)); err != nil {
+		return fmt.Errorf("unable to encode keystore\n%w", err)
+	}
+
+	args := []string{
+		"-importkeystore",
+		"-srckeystore",
+		trustStore,
+		"-srcstorepass",
+		password,
+		"-destkeystore",
+		path,
+		"-destprotected",
+		"-noprompt",
+	}
+
+	if err := effect.NewExecutor().Execute(effect.Execution{
+		Command: c.Command,
+		Args:    args,
+		Stdout:  &bytes.Buffer{},
+		Stderr:  c.Logger.Logger.InfoWriter(),
+	}); err != nil {
+		return fmt.Errorf("unable to run keytool\n%w", err)
 	}
 
 	return nil

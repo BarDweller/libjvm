@@ -24,35 +24,15 @@ import (
 
 	"github.com/paketo-buildpacks/libjvm"
 	"github.com/paketo-buildpacks/libpak/bard"
-	"github.com/paketo-buildpacks/libpak/sherpa"
 	"golang.org/x/sys/unix"
 )
 
-var TmpTrustStore = filepath.Join(os.TempDir(), "truststore")
-
-type OpenSSLCertificateLoader17 struct {
+type OpenSSLCertificateLoader18 struct {
 	CertificateLoader libjvm.CertificateLoader
 	Logger            bard.Logger
 }
 
-func prepareTempTrustStore(trustStore, tempTrustStore string) (map[string]string, error) {
-	trustStoreFile, err := os.Open(trustStore)
-	if err != nil {
-		return nil, fmt.Errorf("unable to open trust store %s\n%w", trustStore, err)
-	}
-	defer trustStoreFile.Close()
-
-	err = sherpa.CopyFile(trustStoreFile, tempTrustStore)
-	if err != nil {
-		return nil, fmt.Errorf("unable to copy dir (%s, %s)\n%w", trustStore, tempTrustStore, err)
-	}
-
-	opts := sherpa.AppendToEnvVar("JAVA_TOOL_OPTIONS", " ", fmt.Sprintf("-Djavax.net.ssl.trustStore=%s", tempTrustStore))
-
-	return map[string]string{"JAVA_TOOL_OPTIONS": opts}, nil
-}
-
-func (o OpenSSLCertificateLoader17) Execute() (map[string]string, error) {
+func (o OpenSSLCertificateLoader18) Execute() (map[string]string, error) {
 	trustStore, ok := os.LookupEnv("BPI_JVM_CACERTS")
 	if !ok {
 		return nil, fmt.Errorf("$BPI_JVM_CACERTS must be set")
@@ -75,6 +55,8 @@ func (o OpenSSLCertificateLoader17) Execute() (map[string]string, error) {
 	}
 
 	o.CertificateLoader.Logger = o.Logger
+	o.CertificateLoader.PKCS12Keystore = true
+	o.CertificateLoader.Command = filepath.Join(os.Getenv("JAVA_HOME"), "bin", "keytool")
 
 	start := time.Now()
 	if err := o.CertificateLoader.Load(trustStore, "changeit"); err != nil {

@@ -18,9 +18,10 @@ package libjvm
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/mattn/go-shellwords"
 	"github.com/paketo-buildpacks/libpak/effect"
-	"strings"
 
 	"github.com/buildpacks/libcnb"
 	"github.com/heroku/color"
@@ -55,7 +56,7 @@ func WithCustomHelpers(customHelpers []string) BuildOption {
 
 func NewBuild(logger bard.Logger, buildOpts ...BuildOption) Build {
 	cl := NewCertificateLoader()
-	cl.Logger = logger.BodyWriter()
+	cl.Logger = logger
 
 	build := Build{
 		Logger:     logger,
@@ -282,10 +283,13 @@ func (b *Build) contributeHelpers(context libcnb.BuildContext, depJRE libpak.Bui
 		helpers = append(helpers, "debug-9")
 		helpers = append(helpers, "nmt")
 	}
-	// Java 18 bug - cacerts keystore type not readable
+
 	if IsBeforeJava18(depJRE.Version) {
-		helpers = append(helpers, "openssl-certificate-loader")
+		helpers = append(helpers, "openssl-certificate-loader-17")
+	} else {
+		helpers = append(helpers, "openssl-certificate-loader-18")
 	}
+
 	found := false
 	for _, custom := range b.CustomHelpers {
 		if found {
